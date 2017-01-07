@@ -1,0 +1,59 @@
+frameworkVersion: ">=1.2.0 <2.0.0"
+
+service: myservicename # NOTE: update this with your service name
+
+custom:
+  secrets: ${file(secrets.${opt:stage, self:provider.stage}.yml)}
+  serverless-mocha-plugin:
+    functionTemplate: templates/function.ejs
+  webpackIncludeModules: true
+
+provider:
+  name: aws
+  runtime: nodejs4.3
+  cfLogs: true
+  environment:
+    API_KEY: ${self:custom.secrets.API_KEY}
+    SERVERLESS_STAGE: ${opt:stage, self:provider.stage}
+    SERVERLESS_PROJECT: ${self:service}
+    SERVERLESS_REGION: ${opt:region, self:provider.region}
+#    TABLE_NAME: ${self:provider.environment.SERVERLESS_PROJECT}-sessions-${self:provider.environment.SERVERLESS_STAGE}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+      - dynamodb:*
+      Resource: arn:aws:dynamodb:${self:provider.environment.SERVERLESS_REGION}:*:*
+    - Effect: Allow
+      Action:
+      - SNS:*
+      Resource: arn:aws:sns:${self:provider.environment.SERVERLESS_REGION}:*:*
+package:
+  exclude:
+    - test/**
+    - .git/**
+
+functions:
+  hello:
+    handler: hello/index.handler
+
+plugins:
+  - serverless-mocha-plugin
+  - serverless-webpack
+  - serverless-offline
+
+#resources:
+#  Resources:
+#    SessionsTable:
+#      Type: AWS::DynamoDB::Table
+#      DeletionPolicy: Delete
+#      Properties:
+#        AttributeDefinitions:
+#          - AttributeName: id
+#            AttributeType: S
+#        KeySchema:
+#          - AttributeName: id
+#            KeyType: HASH
+#        ProvisionedThroughput:
+#          ReadCapacityUnits: 1
+#          WriteCapacityUnits: 1
+#        TableName: ${self:provider.environment.TABLE_NAME}
